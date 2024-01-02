@@ -1,6 +1,6 @@
 # ecoli_mabisi_2022
-# ** Experiment 1 - repeated E. coli invasion **
-# Experiment 2 - propagation of top/bottom mabisi [ignored and not used for any manuscript or thesis chapter!]
+- **Experiment 1 - repeated E. coli invasion **
+- Experiment 2 - propagation of top/bottom mabisi [ignored and not used for any manuscript or thesis chapter!]
 
 # bacterial community profiles
 - fall_2022_communities_v1.R
