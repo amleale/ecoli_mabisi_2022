@@ -1,10 +1,15 @@
 #v1: started in fall 2023. continued in June 2023 (colours, full data set)
+# pairwise comparisons made august 2023
 
 
 setwd("~/Library/CloudStorage/OneDrive-WageningenUniversity&Research/2022_fall_exp/data/ph")
 library(dplyr)
 library(ggplot2)
-library(lme4) #needed for anovas, t-tests later
+library(lme4)#needed for anovas, t-tests later
+library(car)
+library(vegan) #needed for emmeans
+library(emmeans)
+
 
 library(readxl)
 ph_data <- readxl::read_xlsx(path="fall_2022_ph.xlsx", sheet = "forR") 
@@ -71,7 +76,6 @@ ph_data2 %>%
 
 
 ### avgs
-
 ph_summary <- ph_data2 %>%
   group_by(treatment, transfer) %>%
   summarize_at(c("ph"), funs(mean, sd), na.rm =TRUE)
@@ -86,19 +90,29 @@ ph_summary %>%
   ggplot(mapping = aes(x = transfer, y= mean, colour=treatment))+
   # scale_colour_manual(values=c("grey", "violet", "deepskyblue", "coral2", "chartreuse3", "orange"))+ #colours for all together
   # scale_colour_manual(values=c("grey", "violet", "deepskyblue", "coral2"))+ #colours for spatial
-  scale_colour_manual(values=c("grey", "chartreuse3", "orange"))+ #colours for invasion
+  scale_x_continuous(breaks = c(2,4,6,8,10,14,16, 18))+
+  scale_colour_manual(values = c("grey", "purple", "orange"),
+                      labels = c("control", "introduction", "recovery")) +
   geom_line() +
   geom_point() +
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2,
                 position=position_dodge(0.05)) +
-  annotate(geom="text", x=6, y=3.125, label="bars = std.error")+
-  annotate(geom="text", x=6, y=3.1, label="replication = 6")+
-  labs(y = "average pH") +
+  labs(y = "mean pH") +
   ylim(3.05, 3.45) +
   theme_bw() 
 
 
 
+###### STATISTICAL TESTS #######
+## post-hoc tests
+invade$transfer<- as.factor(invade$transfer)
+invade <- invade %>% filter(treatment != "rec") # need to remove for anova b/c it only has data at 3 time points
+
+lm_ph <- lm(ph ~ treatment*transfer, data = invade) 
+Anova(lm_ph, type = 3) 
+summary(lm_ph)
+emmeans(lm_ph, pairwise ~ treatment|transfer) 
+emmeans(lm_ph, pairwise ~ transfer|treatment) 
 
 
 
@@ -107,67 +121,77 @@ ph_summary %>%
 
 
 
-###### test top vs. bottom at t6
-topbottom <- readxl::read_xlsx(path="fall_2022_ph.xlsx", sheet = "topbottomtest") 
-
-topbottom %>% 
-  # filter(transfer == "8")%>%
-  ggplot(mapping = aes(x = level, y= ph, colour=level))+
-  geom_boxplot() +
-  geom_point() +
-  ylim(3.1, 3.45) +
-  facet_wrap(~transfer*treatment, scale="free")
-
-con2 <- filter(topbottom, treatment == "control")
-t.test(con2$ph~con2$level)
-
-top2 <- filter(topbottom, treatment == "top")
-t.test(top2$ph~top2$level)
 
 
-model.ph <- lm(ph ~ level + treatment, data = topbottom)
-Anova(model.ph, type = 3) 
-summary(model.ph)
 
 
-# 'tomato1', 'deepskyblue2','olivedrab3', 'mediumpurple2'
-# full=red, low=blue, med=green,  synt=violet 
-
-model.ph <- lm(pH ~ treatment * transfer, data = ph_data2) # interaction included
-Anova(model.ph, type = 3) # interaction is significant
-summary(model.ph)
 
 
-### avgs
-ph_summary <- 
-  filter(ph_data2) %>% 
-  group_by(treatment, transfer) %>% 
-  summarise(avg_ph = mean(ph), sd = sd(ph), se = sd(ph)/sqrt(6))  #6 is number samples (not accurate for med8, because only 7 sampels there)
-# View(ph_summary)
 
 
+
+# 
+# ###### test top vs. bottom at t6
+# topbottom <- readxl::read_xlsx(path="fall_2022_ph.xlsx", sheet = "topbottomtest") 
+# 
+# topbottom %>% 
+#   # filter(transfer == "8")%>%
+#   ggplot(mapping = aes(x = level, y= ph, colour=level))+
+#   geom_boxplot() +
+#   geom_point() +
+#   ylim(3.1, 3.45) +
+#   facet_wrap(~transfer*treatment, scale="free")
+# 
+# con2 <- filter(topbottom, treatment == "control")
+# t.test(con2$ph~con2$level)
+# 
+# top2 <- filter(topbottom, treatment == "top")
+# t.test(top2$ph~top2$level)
+# 
+# 
+# model.ph <- lm(ph ~ level + treatment, data = topbottom)
+# Anova(model.ph, type = 3) 
+# summary(model.ph)
+# 
+# 
+# # 'tomato1', 'deepskyblue2','olivedrab3', 'mediumpurple2'
+# # full=red, low=blue, med=green,  synt=violet 
+# 
+# model.ph <- lm(pH ~ treatment * transfer, data = ph_data2) # interaction included
+# Anova(model.ph, type = 3) # interaction is significant
+# summary(model.ph)
+# 
+# 
 # ### avgs
-# ph_summary_test <- 
-#   filter(ph_data, transfer != "2") %>% 
+# ph_summary <- 
+#   filter(ph_data2) %>% 
 #   group_by(treatment, transfer) %>% 
-#   summarise_each(funs(mean,sd,se=sd(.)/sqrt(n())))
-# View(ph_summary_test)
-
-
-ph_summary %>% 
-  filter(treatment != "ecoli") %>%
-  filter(treatment != "milk") %>%
-  ggplot(mapping = aes(x = transfer, y= avg_ph, colour=treatment))+
-  geom_line() +
-  geom_point() +
-  geom_errorbar(aes(ymin=avg_ph-se, ymax=avg_ph+se), width=.2,
-                position=position_dodge(0.05)) +
-  annotate(geom="text", x=6, y=3.125, label="bars = std.error")+
-  annotate(geom="text", x=6, y=3.1, label="replication = 6")+
-  labs(y = "average pH") +
-  # ylim(3.35, 3.9) +
-  theme_bw() 
-
-
-
-
+#   summarise(avg_ph = mean(ph), sd = sd(ph), se = sd(ph)/sqrt(6))  #6 is number samples (not accurate for med8, because only 7 sampels there)
+# # View(ph_summary)
+# 
+# 
+# # ### avgs
+# # ph_summary_test <- 
+# #   filter(ph_data, transfer != "2") %>% 
+# #   group_by(treatment, transfer) %>% 
+# #   summarise_each(funs(mean,sd,se=sd(.)/sqrt(n())))
+# # View(ph_summary_test)
+# 
+# 
+# ph_summary %>% 
+#   filter(treatment != "ecoli") %>%
+#   filter(treatment != "milk") %>%
+#   ggplot(mapping = aes(x = transfer, y= avg_ph, colour=treatment))+
+#   geom_line() +
+#   geom_point() +
+#   geom_errorbar(aes(ymin=avg_ph-se, ymax=avg_ph+se), width=.2,
+#                 position=position_dodge(0.05)) +
+#   annotate(geom="text", x=6, y=3.125, label="bars = std.error")+
+#   annotate(geom="text", x=6, y=3.1, label="replication = 6")+
+#   labs(y = "average pH") +
+#   # ylim(3.35, 3.9) +
+#   theme_bw() 
+# 
+# 
+# 
+# 
