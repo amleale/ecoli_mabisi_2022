@@ -90,266 +90,162 @@ new_names$name <- factor(new_names$name, levels =c("Limosilactobacillus", "Lacto
 #### order by time point
 # PROBLEM: legend is now incorrect...
 reduced %>% 
-  # filter(COMMUNITY == "t0") %>%
-  # filter(SPACE == "low") %>%
   filter(PLATE == "plate2")%>%
-  # filter(TRANSFER == "t00") %>%
-  filter(barcode == "bc93") %>%
+  # filter(COMMUNITY == "t0") %>%
+  filter(COMMUNITY != "bot") %>%
+  filter(COMMUNITY != "top") %>%
+  filter(COMMUNITY != "mix") %>%
+  filter(SPACE == "all") %>% 
+  # filter(TRANSFER == "t01") %>%
+  # filter(barcode == "bc93") %>%
   ggplot(aes(x = as.factor(REP), y = abundance, fill = cluster)) +
   geom_col()+ ylim(0,1) +
   scale_fill_manual(
     # labels = new_names$name,
                     values = COLOURS_use)+
   facet_wrap(
-      ~TRANSFER
-      ~COMMUNITY
-    # scales="free_x", nrow=3
+    ~COMMUNITY
+    ~TRANSFER,
+    scales="free_x", ncol=4
   ) +
   theme_bw() +
-  xlab("replicate") +
+  labs(x ="replicate", y = "relative abundance") +
   theme(axis.ticks.x = element_blank(),
         # axis.text.x = element_blank(),
-        # legend.position="none"
+        legend.position= c(0.8, 0.16)
   )
 
 
-# by community
+
+
+# Define a custom labeling function
+transfer_labels <- function(variable) {
+  full_names <- c("t01" = "Transfer 01", "t09" = "Transfer 09", "t12" = "Transfer 12", "t19" = "Transfer 19")
+  return(full_names[as.character(variable)])
+}
+
+community_labels <- function(variable) {
+  full_names <- c("con" = "control", "inv" = "introduction", "rec" = "recovery")
+  return(full_names[as.character(variable)])
+}
+
+# Apply the custom labels in facet_wrap
 reduced %>% 
-  filter(COMMUNITY == "rec") %>%
-  # filter(SPACE == "low") %>%
-  filter(PLATE == "plate2")%>%
-  # filter(TRANSFER == "t00") %>%
-  # filter(barcode == "bc95") %>%
+  filter(PLATE == "plate2") %>%
+  filter(COMMUNITY != "bot") %>%
+  filter(COMMUNITY != "top") %>%
+  filter(COMMUNITY != "mix") %>%
+  filter(SPACE == "all") %>% 
   ggplot(aes(x = as.factor(REP), y = abundance, fill = cluster)) +
-  geom_col()+ ylim(0,1) +
-  scale_fill_manual(
-    # labels = new_names$name,
-    values = COLOURS_use)+
+  geom_col() + ylim(0, 1) +
+  scale_fill_manual(values = COLOURS_use,
+                    labels = c("Acetobacter A", "Lactobacillus A", "Limosilactobacillus A", "Lactobacillus B")) +
   facet_wrap(
-    # ~COMMUNITY
-    ~TRANSFER
-    ~SPACE
-    # scales="free_x", nrow=3
+    ~COMMUNITY ~ TRANSFER,
+    scales = "free_x", ncol = 4,
+    labeller = labeller(TRANSFER = transfer_labels, COMMUNITY = community_labels) # Apply custom labels to TRANSFER variable
   ) +
   theme_bw() +
-  xlab("replicate") +
-  theme(axis.ticks.x = element_blank(),
-        # axis.text.x = element_blank(),
-        legend.position="none"
+  labs(x = "replicate", y = "relative abundance") +
+  theme(
+    axis.ticks.x = element_blank(),
+    legend.position = c(0.8, 0.16)
   )
 
 
 
-
-
-###### NMDS PLOTS ######
-# cannot have missing values?
-reduced <- merged %>% 
-  filter(barcode != "bc90") %>% 
-  filter(barcode != "bc94") %>% 
-  filter(barcode != "bc86") %>% 
-  separate(SAMPLE, c("time", "replicate"), sep = "-", remove = FALSE)
-
-pivoted <- reduced %>% 
-  pivot_wider(names_from = cluster, values_from = abundance, 
-              id_cols = c("barcode", "SAMPLE", "COMMUNITY", "TRANSFER"))
-
-
-pivoted <- pivoted[, -c(11:18)] # remove clusters that are just contamination/rare types b/c this introduces too many NAs
-# pivoted <- pivoted %>% filter(COMMUNITY == "full")
-
-pivoted <- as.data.frame(pivoted)
-pivoted[is.na(pivoted)] <- 0
-com = pivoted[,5:ncol(pivoted)] #take just columns with data
-
-set.seed(123)
-nmds = vegan::metaMDS(com, distance = "bray") 
-plot(nmds)
-
-### plotting taken from:
-# https://jkzorz.github.io/2019/06/06/NMDS.html#:~:text=Non%2Dmetric%20Multi%2Ddimensional%20Scaling,a%202D%20representation%20or%20ordination.
-
-data.scores = as.data.frame(scores(nmds)$sites) #makes output of axis scores, appears to keep in order so next lines work
-data.scores$SAMPLE = pivoted$SAMPLE # adds information for plotting/grouping
-data.scores$TRANSFER = pivoted$TRANSFER
-data.scores$COMMUNITY = pivoted$COMMUNITY
-
-# plot all NMDS points
-data.scores %>% 
-  ggplot(aes(x = NMDS1, y = NMDS2)) + 
-  geom_point(size = 4, alpha = 0.4, aes(colour = COMMUNITY,shape = TRANSFER))+ 
-  theme_bw(base_size = 14) +
-  labs(x = "NMDS1", colour = "COMMUNITY", y = "NMDS2", shape = "TRANSFER")  
-
-## finding centroids and plotting them 
-data.scores$group <- paste0(data.scores$TRANSFER, "_",data.scores$COMMUNITY) # paste puts two vectors together (can also use dyplr), adds underscore between
-
-centroid <- aggregate(cbind(NMDS1, NMDS2) ~ group, data = data.scores, FUN = mean) #take mean on x and mean on y to head centroid
-centroid$COMMUNITY <- gsub(".*_", "", centroid$group) #take everything before _, replace with nothing
-centroid$TRANSFER <- gsub("_.*", "", centroid$group) #take everything after _, replace with nothing
-
-# reorder so that colour are correct
-centroid$COMMUNITY <- factor(centroid$COMMUNITY, levels = c("full", "med", "low", "synt"))
-
-centroid %>% 
-  ggplot(aes(x = NMDS1, y = NMDS2)) + 
-  geom_point(size = 4, 
-             aes(colour = COMMUNITY, shape =  TRANSFER))+
-  theme_bw(base_size = 14) 
-
-# create the two lines 
-int_1 <- data.frame(treat = c("full","low","med","synt"),
-                    xstart = subset(centroid,TRANSFER=="t01")$NMDS1,
-                    ystart = subset(centroid,TRANSFER=="t01")$NMDS2,
-                    xend = subset(centroid,TRANSFER=="t05")$NMDS1,
-                    yend = subset(centroid,TRANSFER=="t05")$NMDS2)
-
-int_2 <- data.frame(treat = c("full","low","med","synt"),
-                    xstart = subset(centroid,TRANSFER=="t05")$NMDS1,
-                    ystart = subset(centroid,TRANSFER=="t05")$NMDS2,
-                    xend = subset(centroid,TRANSFER=="t17")$NMDS1,
-                    yend = subset(centroid,TRANSFER=="t17")$NMDS2)
-
-# plot centroids and connect t1 to t5 to t17 with lines 
-p <- centroid %>% 
-  ggplot(aes(x = NMDS1, y = NMDS2)) + 
-  geom_point(size = 4, aes(colour = COMMUNITY, shape =  TRANSFER))+
-  geom_segment(data=int_1,
-               aes(x=xstart,xend=xend,y=ystart,yend=yend),
-               arrow=arrow(length=unit(0.4,"cm"))) +
-  geom_segment(data=int_2,
-               aes(x=xstart,xend=xend,y=ystart,yend=yend),
-               arrow=arrow(length=unit(0.4,"cm"))) +
-  theme_bw(base_size = 14) +
-  ylim(-0.35, 0.35) +
-  xlim(-0.5, 1.25) 
-
-###### figure in manuscript ##########
-# plot points and arrows together
-p + geom_point(data = data.scores, 
-               size = 3, alpha = 0.4, 
-               aes(colour = COMMUNITY,shape = TRANSFER) )
-
-########################################################
-####### RATIOS OF ACETOBACTERS vs. LACTIC ACID #########
-reduced <- merged %>%  # will again use version without missing barcodes added
-  filter(barcode != "bc90") %>% 
-  filter(barcode != "bc94") %>% 
-  filter(barcode != "bc86") 
-
-wide <- reduced  %>% 
-  pivot_wider(names_from = cluster, values_from = abundance, values_fill = 0)
-
-# sum up the acetobacters and lactobacilli for each barcode
-wide <- wide %>% 
-  mutate(AAB = Acetobacter_lovaniensis + Acetobacter_orientalis + Acetobacter_sp._SRT1) %>%
-  mutate(LAB = Lactobacillus_delbrueckii_subsp._lactis + Lactobacillus_fermentum + Lactobacillus_helveticus + Lactobacillus_sp._RA2113)
-
-# make simpler chart and confirm no doubles of barcodes 
-combined <- wide %>%
-  group_by(barcode, SAMPLE, TRANSFER, COMMUNITY) %>%
-  summarise(AAB2 = sum(AAB), LAB2 = sum(LAB)) %>%
-  mutate(TOTAL = AAB2 + LAB2) %>%
-  mutate(RATIO = AAB2 / LAB2) 
-
-#make numeric transfer and new column for replicate
-combined$TRANSFER2 <- gsub("t"," ", combined$TRANSFER)
-combined$REP <- gsub(".*-"," ", combined$SAMPLE)
-
-### PLOT relative abundances of AAB and LAB 
-combined %>%
-  ggplot(aes(colour = COMMUNITY, group = REP)) + 
-  geom_line(aes(x = as.numeric(TRANSFER2), y = LAB2)) +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = AAB2), linetype= "longdash") +
-  theme_bw(base_size = 14) +
-  xlab("transfer") +
-  ylab("relative abundance") +
-  scale_x_continuous(breaks=c(1,5,17)) +
-  annotate("text", x = 10, y = 0.3, label = "acetic acid bacteria") +
-  annotate("text", x = 10, y = 0.67, label = "lactic acid bacteria")
-
-
-#### plotting individual types of acetobacters and lactobacilli
-# make simpler chart and confirm no doubles of barcodes while adding up
-df <- wide %>%
-  group_by(SAMPLE, TRANSFER, COMMUNITY) %>%
-  summarise(aceA = sum(Acetobacter_lovaniensis),
-            aceB = sum(Acetobacter_orientalis),
-            aceC = sum(Acetobacter_sp._SRT1),
-            lacA = sum(Lactobacillus_delbrueckii_subsp._lactis),
-            lacB = sum(Lactobacillus_helveticus),
-            lacC = sum(Lactobacillus_sp._RA2113),
-            limA = sum(Lactobacillus_fermentum))
-
-#make numeric transfer and new column for replicate
-df$TRANSFER2 <- gsub("t"," ", df$TRANSFER)
-df$REP <- gsub(".*-"," ", df$SAMPLE)
-
-# LACTOBACILLI TYPES
-df %>%
-  ggplot(aes(colour = COMMUNITY, group = REP)) +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = lacA)) +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = lacB), linetype= "longdash") +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = lacC), linetype= "dotted") + #lactobacillus C only seen in low at t0
-  theme_bw(base_size = 14) +
-  xlab("transfer") +
-  ylab("relative abundance") +
-  ggtitle("A: Lactobacilli A, B, C") +
-  scale_x_continuous(breaks=c(1,5,17))+
-  annotate("text", x = 13, y = 0.3, label = "Lactobacillus A (solid)") +
-  annotate("text", x = 13, y = 0.6, label = "Lactobacillus B (dashed)") +
-  annotate("text", x = 13, y = -0.02, label = "Lactobacillus C (dotted)") 
-
-# ACETOBACTER TYPES
-df %>%
-  ggplot(aes(colour = COMMUNITY, group = REP)) +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = aceA)) +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = aceB), linetype= "longdash") +
-  geom_line(aes(x = as.numeric(TRANSFER2), y = aceC), linetype= "dotted") +
-  theme_bw(base_size = 14) +
-  xlab("transfer") +
-  ylab("relative abundance") +
-  ggtitle("B: Acetobacter A, B, C") +
-  scale_x_continuous(breaks=c(1,5,17)) +
-  annotate("text", x = 13, y = 0.2, label = "Acetobacter A (solid)") +
-  annotate("text", x = 13, y = 0.1, label = "Acetobacter B (dashed)") +
-  annotate("text", x = 13, y = -0.005, label = "Acetobacter C (dotted)")
 
 ###############################
 ##### ADONIS PERMANOVA ########
 library(vegan)
 
-reduced <- merged %>%  # again, want version without missing barcodes added
+reduced <- merged %>%  # again, want version without missing barcodes added, and just plate 2, not data from spatial experiment 
   filter(barcode != "bc90") %>% 
   filter(barcode != "bc94") %>% 
-  filter(barcode != "bc86") 
+  filter(barcode != "bc86") %>% 
+  filter(PLATE == "plate2") %>%
+  filter(COMMUNITY != "bot") %>%
+  filter(COMMUNITY != "top") %>%
+  filter(COMMUNITY != "mix") %>%
+  filter(SPACE == "all") 
 
 # transform to horizontal
 wide <- reduced  %>% 
   pivot_wider(names_from = cluster, values_from = abundance, values_fill = 0)
 
-#everything, with interaction
-adonis2(wide[ ,5:18] ~ COMMUNITY*TRANSFER, data = wide[,1:4], method = "bray") 
+#everything, with interaction (take 9-12 = abdunances, take 2-3 = variables of interest)
+adonis2(wide[ ,9:12] ~ COMMUNITY*TRANSFER, data = wide[,2:3], method = "bray") 
 
-#by transfer
-adonis2(wide[wide$TRANSFER=="t01",5:18] ~ COMMUNITY, 
-        data = wide[wide$TRANSFER=="t01",1:4], method = "bray") 
 
-adonis2(wide[wide$TRANSFER=="t05",5:18] ~ COMMUNITY, 
-        data = wide[wide$TRANSFER=="t05",1:4], method = "bray") 
+# pairwise comparisons for checing post-hoc differences
+# https://raunakms.github.io/diversity_cooking_fuel/06_01_permanova_test.html
+wide_subset <- wide %>% filter(TRANSFER == "t01") # PROBLEM - error for t12, signifcant community effect at t19...
 
-adonis2(wide[wide$TRANSFER=="t17",5:18] ~ COMMUNITY, 
-        data = wide[wide$TRANSFER=="t17",1:4], method = "bray") 
+dist_dml <- vegan::vegdist(x=as.matrix(wide_subset[,9:12]), 
+                           method="bray", binary=FALSE, diag=TRUE, upper=TRUE, na.rm=FALSE)
 
-#by community
-adonis2(wide[wide$COMMUNITY=="full",5:18] ~ TRANSFER, 
-        data = wide[wide$COMMUNITY=="full",1:4], method = "bray") 
+y_permanova <- vegan::adonis2(
+                      dist_dml ~ COMMUNITY,
+                      # dist_dml ~ COMMUNITY*TRANSFER,#should be same as above lines
+                      data=wide_subset, permutations=999, method="euclidean", parallel=4)
+y_permanova
 
-adonis2(wide[wide$COMMUNITY=="med",5:18] ~ TRANSFER, 
-        data = wide[wide$COMMUNITY=="med",1:4], method = "bray") 
+# I think this here is oonly possible with >2 groups (i.e., only at t19 when there's recovery line)
+permtst <- RVAideMemoire::pairwise.perm.manova(resp = dist_dml, fact = wide_subset$COMMUNITY,
+                                               test = "Pillai", nperm = 999, progress = TRUE, p.method = "none")
+df <- reshape2::melt(permtst$p.value)
+colnames(df) <- c("comm1", "comm2", "pvalue")
+df <- df[-which(is.na(df$pvalue)), ]
+df$pvalue.adj <- p.adjust(p = df$pvalue, method = "bonferroni", n = length(df$pvalue))
+df
 
-adonis2(wide[wide$COMMUNITY=="low",5:18] ~ TRANSFER, 
-        data = wide[wide$COMMUNITY=="low",1:4], method = "bray") 
 
-adonis2(wide[wide$COMMUNITY=="synt",5:18] ~ TRANSFER, 
-        data = wide[wide$COMMUNITY=="synt",1:4], method = "bray") 
+# use betadisper to see if dispersions differ 
+# here done at t1....
+# https://mattsigal.github.io/eqcov_supp/betadisp-ex.html
+
+beta <- wide %>%  filter(TRANSFER == "t19")
+dst <- dist(beta[,9:12])
+wide.bd <- betadisper(dst, beta$COMMUNITY)
+anova(wide.bd)
+# permutest(wide.bd)
+boxplot(wide.bd, xlab="COMMUNITY", main = "t17")
+
+
+# 
+
+
+
+
+
+
+
+
+
+
+
+
+# 
+# 
+# #by transfer
+# adonis2(wide[wide$TRANSFER=="t01",5:18] ~ COMMUNITY, 
+#         data = wide[wide$TRANSFER=="t01",1:4], method = "bray") 
+# 
+# adonis2(wide[wide$TRANSFER=="t05",5:18] ~ COMMUNITY, 
+#         data = wide[wide$TRANSFER=="t05",1:4], method = "bray") 
+# 
+# adonis2(wide[wide$TRANSFER=="t17",5:18] ~ COMMUNITY, 
+#         data = wide[wide$TRANSFER=="t17",1:4], method = "bray") 
+# 
+# #by community
+# adonis2(wide[wide$COMMUNITY=="full",5:18] ~ TRANSFER, 
+#         data = wide[wide$COMMUNITY=="full",1:4], method = "bray") 
+# 
+# adonis2(wide[wide$COMMUNITY=="med",5:18] ~ TRANSFER, 
+#         data = wide[wide$COMMUNITY=="med",1:4], method = "bray") 
+# 
+# adonis2(wide[wide$COMMUNITY=="low",5:18] ~ TRANSFER, 
+#         data = wide[wide$COMMUNITY=="low",1:4], method = "bray") 
+# 
+# adonis2(wide[wide$COMMUNITY=="synt",5:18] ~ TRANSFER, 
+#         data = wide[wide$COMMUNITY=="synt",1:4], method = "bray") 
