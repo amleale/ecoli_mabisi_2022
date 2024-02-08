@@ -1,7 +1,6 @@
 # v1 adapted from v8 of diversity-function script
-# need to check META file matching
  
-setwd("~/Library/CloudStorage/OneDrive-WageningenUniversity&Research/2022_fall_exp/data/communites")
+setwd("~/Library/CloudStorage/OneDrive-WageningenUniversity&Research/2022_fall_exp_leale/data/communites")
 library(dplyr)
 library(ggplot2)
 library(tidyverse)
@@ -23,7 +22,7 @@ META$PLATE_bc <- paste(META$PLATE, META$barcode, sep= "_")
 META$SAMPLE <- gsub("s","", META$SAMPLE) #remove "s" since can then later filter out controls easier
 # there are no reads for F1.1, neg, or t0
 merged <- merge(CLUST, META, by = "PLATE_bc", all = TRUE) 
-# I am loosing t0 here and F1.1 for aggregate
+# I am loosing t0 here and F1.1 with aggregate
 merged <- aggregate(.~PLATE_bc + cluster + TRANSFER+ COMMUNITY+ REP +SPACE +SAMPLE+ PLATE+ barcode, 
                     merged, FUN = sum)  #need to combine when multiple clusters of same species >1%
 
@@ -31,37 +30,26 @@ merged <- aggregate(.~PLATE_bc + cluster + TRANSFER+ COMMUNITY+ REP +SPACE +SAMP
 merged <- merged %>% filter(abundance > 0.01) #filter only clusters of abundance over 1% 
 merged$TRANSFER <- factor(merged$TRANSFER, levels = c("t00","t01", "t09", "t12", "t19")) # makes plotting better later
 merged$COMMUNITY <- factor(merged$COMMUNITY, levels = c("con", "top", "bot", "mix", "inv", "rec")) # makes plotting better later
-merged$SPACE <- factor(merged$SPACE, levels = c("all", "up", "low"))
+merged$SPACE <- factor(merged$SPACE, levels = c("all", "up", "low")) # was relavant for data from another experiment
 
 ########## BARPLOTS #################
-#### remove controls (Anneloes = 86, neg = 90 , zymo = 94)
-reduced <- merged
-# %>% filter ()
-# %>%
-#   filter(PLATE !=1 | barcode != 10) 
-# # %>%
-# #     filter(SAMPLE > 181)
-  # filter(barcode != "bc93") %>% # F1.1 from 2021 experiment
+reduced <- merged %>%
+  filter(PLATE == "plate2") %>% # remove plate 1 
+  filter(COMMUNITY != "bot") %>% # remove different experiment data
+  filter(COMMUNITY != "top") %>% # remove different experiment data
+  filter(COMMUNITY != "mix") %>% # remove different experiment data
+  filter(SPACE == "all") # # remove different experiment data
+  #### above filtering already removes control samples 
+  # filter(barcode != "bc93") %>% # F1.1 from Leale et al. 2023 (FEMS Microbiology Ecology)
   # filter(barcode != "bc94") %>% # M+ mabisi mock community
   # filter(barcode != "bc95") %>% # zymo control
   # filter(barcode != "bc96")  # negative
 
+# make already here data set of just control samples  
+controls <- merged %>%
+  # filter(PLATE == "plate2") %>% # remove plate 1 
+  filter(barcode %in% c("bc93", "bc94", "bc95", "bc96"))
 
-
-# %>% # M+ mabisi mock community
-#   filter(barcode == "bc95") %>% # zymo control
-#   filter(barcode == "bc96")  # negative
-
-
-#manually add missing barcodes 
-# reduced <- rbind(reduced, c("bc200","Acetobacter_lovaniensis", "1-F5", 1, "F5", "t01", "full", 0.001))
-# reduced <- rbind(reduced, c("bc201","Acetobacter_lovaniensis", "1-F7", 1, "F7", "t01", "full", 0.001))
-# reduced <- rbind(reduced, c("bc202","Acetobacter_lovaniensis", "1-M8", 1, "M8", "t01", "med", 0.001))
-# reduced <- rbind(reduced, c("bc207","Acetobacter_lovaniensis", "1-S2", 1, "S2", "t01", "synt", 0.001))
-# reduced <- rbind(reduced, c("bc203","Acetobacter_lovaniensis", "1-L2", 1, "L2", "t01", "low", 0.001))
-# reduced <- rbind(reduced, c("bc204","Acetobacter_lovaniensis", "5-M8", 5, "M8", "t05", "med", 0.001))
-# reduced <- rbind(reduced, c("bc205","Acetobacter_lovaniensis", "5-L4", 5, "L4", "t05", "low", 0.001))
-# reduced <- rbind(reduced, c("bc206","Acetobacter_lovaniensis", "17-M8", 17, "M8", "t17", "med", 0.001))
 
 # reduced$replicate <- substr(reduced$replicate, 2, 2) #remove letter from replicate to just have number
 reduced$abundance <- as.numeric(reduced$abundance) #rbind made it a character, so need to go back to numeric
@@ -87,37 +75,6 @@ new_names$name <- factor(new_names$name, levels =c("Limosilactobacillus", "Lacto
                    "Propionibacterium", "Rhodanobacter", "Pseudomonas", "Staphylococcus", "Moraxella",
                    "Enterococcus A", "Enterococcus B", "NA"))
 
-#### order by time point
-# PROBLEM: legend is now incorrect...
-reduced %>% 
-  filter(PLATE == "plate2")%>%
-  # filter(COMMUNITY == "t0") %>%
-  filter(COMMUNITY != "bot") %>%
-  filter(COMMUNITY != "top") %>%
-  filter(COMMUNITY != "mix") %>%
-  filter(SPACE == "all") %>% 
-  # filter(TRANSFER == "t01") %>%
-  # filter(barcode == "bc93") %>%
-  ggplot(aes(x = as.factor(REP), y = abundance, fill = cluster)) +
-  geom_col()+ ylim(0,1) +
-  scale_fill_manual(
-    # labels = new_names$name,
-                    values = COLOURS_use)+
-  facet_wrap(
-    ~COMMUNITY
-    ~TRANSFER,
-    scales="free_x", ncol=4
-  ) +
-  theme_bw() +
-  labs(x ="replicate", y = "relative abundance") +
-  theme(axis.ticks.x = element_blank(),
-        # axis.text.x = element_blank(),
-        legend.position= c(0.8, 0.16)
-  )
-
-
-
-
 # Define a custom labeling function
 transfer_labels <- function(variable) {
   full_names <- c("t01" = "Transfer 01", "t09" = "Transfer 09", "t12" = "Transfer 12", "t19" = "Transfer 19")
@@ -129,13 +86,8 @@ community_labels <- function(variable) {
   return(full_names[as.character(variable)])
 }
 
-# Apply the custom labels in facet_wrap
+# MAIN FIGURE: Apply the custom labels in facet_wrap
 reduced %>% 
-  filter(PLATE == "plate2") %>%
-  filter(COMMUNITY != "bot") %>%
-  filter(COMMUNITY != "top") %>%
-  filter(COMMUNITY != "mix") %>%
-  filter(SPACE == "all") %>% 
   ggplot(aes(x = as.factor(REP), y = abundance, fill = cluster)) +
   geom_col() + ylim(0, 1) +
   scale_fill_manual(values = COLOURS_use,
@@ -152,14 +104,73 @@ reduced %>%
     legend.position = c(0.8, 0.16)
   )
 
+## figure of control samples 
+controls %>% 
+  # filter(barcode != "bc95") %>%
+  filter(barcode == "bc95") %>%
+  ggplot(aes(x = PLATE, y = abundance, fill = cluster)) +
+  geom_col() + ylim(0, 1) +
+  # scale_fill_manual(values = COLOURS_use ) +
+  facet_wrap(~barcode, labeller = labeller(barcode = c(bc93 = "F1.1 control", bc94 = "M+ control", bc95 = "Zymo control"))) +
+  theme_bw() +
+  labs(x = "sequencing round", y = "relative abundance") +
+  theme(
+    axis.ticks.x = element_blank(),
+    # legend.position = c(0.8, 0.16)
+  )
+
+
+
+#########################################
+##### CALCULATING RICHNESS / SHANNON ######\
+reduced <- merged %>%  # again, want version without missing barcodes added, and just plate 2, not data from spatial experiment 
+  filter(barcode != "bc90") %>% 
+  filter(barcode != "bc94") %>% 
+  filter(barcode != "bc86") %>% 
+  filter(PLATE == "plate2") %>%
+  filter(COMMUNITY != "bot") %>%
+  filter(COMMUNITY != "top") %>%
+  filter(COMMUNITY != "mix") %>%
+  filter(SPACE == "all") 
+
+# transform to horizontal
+wide <- reduced %>% 
+  pivot_wider(names_from = cluster, values_from = abundance, 
+              id_cols = c("barcode", "SAMPLE", "COMMUNITY", "TRANSFER"))
+
+wide <- as.data.frame(wide)
+wide[is.na(wide)] <- 0
+
+###calcualte richness & shannon (vegan pkg)
+wide$richness <- specnumber(wide[c(5:8)]) 
+wide$shannon <- diversity(wide[c(5:8)])
+
+summarised <- wide %>% 
+  group_by(COMMUNITY, TRANSFER) %>% 
+  summarise(across(c(richness, shannon), mean))
+summarised
+
+### RICHNESS
+wide %>%
+  # filter(TRANSFER == "t01") %>%
+  ggplot(aes(x = COMMUNITY, y=richness, fill = COMMUNITY)) +
+  geom_boxplot() +
+  facet_wrap(~TRANSFER,
+             # ~COMMUNITY, 
+             scales="free_x", nrow=1) +
+  theme_bw() 
+
+library(emmeans)
+rich_lm <- lm(richness ~ COMMUNITY*TRANSFER, data = wide) 
+# Anova(rich_lm, type = 3)
+summary(rich_lm)
+emmeans(rich_lm, pairwise ~ COMMUNITY|TRANSFER)  #never significant
 
 
 
 ###############################
 ##### ADONIS PERMANOVA ########
-library(vegan)
-
-reduced <- merged %>%  # again, want version without missing barcodes added, and just plate 2, not data from spatial experiment 
+reduced <- merged %>%  # again, just check have version without missing barcodes added, and just plate 2, not data from spatial experiment 
   filter(barcode != "bc90") %>% 
   filter(barcode != "bc94") %>% 
   filter(barcode != "bc86") %>% 

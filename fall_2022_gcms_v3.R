@@ -1,10 +1,10 @@
 # v3 started in august2023, continued with some fixes in november 2023
 # to do: compare t01 vs. t19 of control/ecoli/recovery ???
 # dec2023: fixing plots, maybe some stats 
-
+# feb 2023: pcas of all data (i.e., not separate for each transfer)
 
 #input data is still the same file
-setwd("~/Library/CloudStorage/OneDrive-WageningenUniversity&Research/2022_fall_exp/data/gcms")
+setwd("~/Library/CloudStorage/OneDrive-WageningenUniversity&Research/2022_fall_exp_leale/data/gcms")
 
 library(readxl) #needed to read in excel file
 library(dplyr) #needed for data manipulation
@@ -140,10 +140,40 @@ aroma_pca
 
 
 
+#### PCA for all data together 
+aroma_norm2 <- aroma_norm %>%
+  filter(sample != "milk") %>%
+  filter(sample != "kefir") %>%
+  filter(sample != "banana") %>%
+  filter(treatment != "top") %>%
+  filter(treatment != "bot") %>%
+  filter(treatment != "mix") %>%
+  filter(space != "up") %>%
+  filter(space != "low") 
 
-#### STATs? 
+df2 <- aroma_norm2[8:23] 
+pca_res <- prcomp(na.omit(df2), scale. = TRUE)
+summary(pca_res)
 
+aroma_pca <- autoplot(pca_res, data = aroma_norm2,
+                      colour = "treatment", 
+                      loadings = TRUE, loadings.colour = 'grey20',
+                      loadings.label = TRUE, loadings.label.colour = 'grey20',
+                      loadings.label.size = 3, loadings.label.repel=T
+) +
+  stat_ellipse(geom = "polygon", level = 0.95, aes(fill = treatment), alpha = 0.25) +
+  scale_colour_manual(values = c("grey", "purple", "orange"),
+                      labels = c("control", "introduction", "recovery")) +
+  scale_fill_manual(values = c("grey", "purple", "orange"),
+                    labels = c("control", "introduction", "recovery")) +
+  facet_wrap(~transfer) +
+  theme_bw(base_size = 14) +
+  labs(
+    title = "all together",
+  )
 
+aroma_pca$layers <- aroma_pca$layers[c(4, 1,2,3)] # only needed when loadings shown
+aroma_pca
 
 
 
