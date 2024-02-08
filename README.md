@@ -19,3 +19,6 @@
 - fall_2022_ph.R
 - fall_2022_ph.xlsx
 
+# E. coli growing alone in BHI and milk
+- feb2024_ecoli_cfus.R
+- feb2024_ecoli.xlsx
