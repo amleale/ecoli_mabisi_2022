@@ -21,4 +21,4 @@
   
 # E. coli growing alone in BHI and milk
 - feb2024_ecoli_cfus.R
-- feb2024_ecoli.xlsx (includes read.me tab explaining variables)
+- feb2024_ecoli.xlsx (pH and raw plate counts after 72 hours, includes read.me tab explaining variables)
