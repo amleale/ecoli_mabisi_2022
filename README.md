@@ -22,3 +22,15 @@
 # E. coli growing alone in BHI and milk
 - feb2024_ecoli_cfus.R
 - feb2024_ecoli.xlsx (pH and raw plate counts after 72 hours, includes read.me tab explaining variables)
+
+
+# variable descriptions:
+TREATMENT: transfering from top 20mL (top), bottom 20mL (bottom), normally (con), tube sealed and kept on spinner (mix), ecoli added at every transfer (inv), ecoli line recovering with no ecoli added (rec)
+
+TRANSFER: 0 = day of inoculation. Fermentation regime: 72hrs @ 28 C, backslopped (t1), 24 hrs @ 4 C, 72 hours @28 C, backslopped (t2). Repeat. t02 refers to end-product of t01
+
+REP: replicate 1 to 6
+
+CODE: combination of treatment + replicate
+
+SPACE: area of tube sampled from (i.e., upper 20mL = up, lower 20mL = low, entire tube mixed = all)
