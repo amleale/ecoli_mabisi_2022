@@ -96,7 +96,8 @@ aroma_norm2 <- aroma_norm %>%
   filter(treatment != "mix") %>%
   filter(space != "up") %>%
   filter(space != "low") %>%
-  filter(transfer == "t19")
+  filter(treatment != "rec") %>%
+  filter(transfer == "t01")
 
 ###### PCA PLOT - transfer 
 # autoplot uses ggplot2 (need ggplot2 installed)
@@ -111,18 +112,17 @@ pca_res <- prcomp(na.omit(df2), scale. = TRUE)
 
 ### SUMMARY STATS of PCA analysis (transfer)
 summary(pca_res)
-# fviz_eig(pca_res)  ### scree plot of dimension contributions
-# rotation <- pca_res[["rotation"]] ### aroma contributions to each PC
+fviz_eig(pca_res)  ### scree plot of dimension contributions
+rotation <- pca_res[["rotation"]] ### aroma contributions to each PC
 # write.csv(rotation, "rot_t19.csv") # save output in spreadsheet, will go to source file location (i.e., working directory)
-# pca_res[["x"]] ### sample contributions to each PC (sorry not working...)
+# pca_res[["x"]] ### sample contributions to each PC 
 
-### PCA plot + arrows 
+### PCA plot + arrows  [good size = 5x7 for pdf export]
 aroma_pca <- autoplot(pca_res, data = aroma_norm2,
                       colour = "treatment", 
                       loadings = TRUE, loadings.colour = 'grey20',
                       loadings.label = TRUE, loadings.label.colour = 'grey20',
-                      loadings.label.size = 3, loadings.label.repel=T
-) +
+                      loadings.label.size = 3, loadings.label.repel=T) +
   stat_ellipse(geom = "polygon", level = 0.95, aes(fill = treatment), alpha = 0.25) +
   scale_colour_manual(values = c("grey", "purple", "orange"),
                       labels = c("control", "introduction", "recovery")) +
@@ -130,13 +130,17 @@ aroma_pca <- autoplot(pca_res, data = aroma_norm2,
                     labels = c("control", "introduction", "recovery")) +
   theme_bw(base_size = 14) +
   labs(
-    title = "B: transfer 09",
+    # title = "A: transfer 01",
+    # title = "B: transfer 09",
+    title = "C: transfer 12",
+    # title = "D: transfer 19",
+    # title = "E: transfer 19",
   )
-
 
 aroma_pca$layers <- aroma_pca$layers[c(4, 1,2,3)] # only needed when loadings shown
 aroma_pca
 # ggsave("aroma_pca.svg",width=9,height=6.5)
+
 
 
 
@@ -177,13 +181,29 @@ aroma_pca
 
 
 
-
-
-
-
-
-
-
-
-
+# # testing and failing to test Bas' questions
+# # compound directions 
+# rot_t01 <- readxl::read_xlsx(path="aroma_contributions.xlsx", sheet ="transfer1_a") 
+# rot_t09 <- readxl::read_xlsx(path="aroma_contributions.xlsx", sheet ="transfer9_b") 
+# rot_t12 <- readxl::read_xlsx(path="aroma_contributions.xlsx", sheet ="transfer12_c") 
+# rot_t19 <- readxl::read_xlsx(path="aroma_contributions.xlsx", sheet ="transfer19_d") 
+# 
+# library(plotly)
+# plot_ly(rot_t19, x = ~PC1, y = ~PC2, z = ~PC3, 
+#         color = ~compound,
+#         type = "scatter3d", mode = "markers") %>%
+#   layout(title = "transfer 19 directions")
+# 
+# library(ggplot2)
+# 
+# # Order the data frame by PC2 value
+# 
+# rot_t01 %>%
+#   ggplot(aes(x =compound, y = as.numeric(PC2))) +
+#   geom_dotplot() +
+#   theme_bw() +
+#   theme(legend.position = "none", 
+#         axis.text.x = element_text(angle = 90, hjust = 1)) +  
+#   labs(title = "Transfer 01")+
+#   ylim(-0.15, 0.3)
 
