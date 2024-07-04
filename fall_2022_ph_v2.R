@@ -41,7 +41,7 @@ ph_summary %>%
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.5,
                 position=position_dodge(0.05)) +
   labs(y = "mean pH") +
-  ylim(3.15, 3.4) +
+  ylim(3.0, 3.5) +
   theme_bw(base_size = 14) 
 
 
