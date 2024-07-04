@@ -1,5 +1,6 @@
-# v1 adapted from v8 of diversity-function script
- 
+# adapted from Leale et al. 2023 FEMS Microbiology Ecology
+# see "read.me" tab of "fall2022_META.csv" and "output_barcoded_mabisi_2plates_0.95_clustering.csv" for variable descriptions
+
 setwd("~/Library/CloudStorage/OneDrive-WageningenUniversity&Research/2022_fall_exp_leale/data/communites")
 library(dplyr)
 library(ggplot2)
@@ -104,6 +105,7 @@ reduced %>%
     legend.position = c(0.8, 0.16)
   )
 
+
 ## figure of control samples 
 controls %>% 
   # filter(barcode != "bc95") %>%
@@ -185,7 +187,7 @@ wide <- reduced  %>%
   pivot_wider(names_from = cluster, values_from = abundance, values_fill = 0)
 
 #everything, with interaction (take 9-12 = abdunances, take 2-3 = variables of interest)
-adonis2(wide[ ,9:12] ~ COMMUNITY*TRANSFER, data = wide[,2:3], method = "bray") 
+adonis2(wide[ ,9:12] ~ COMMUNITY*TRANSFER, data = wide[ ,2:3], method = "bray") 
 
 
 # pairwise comparisons for checing post-hoc differences
